@@ -99,11 +99,7 @@ fn run_app(
             // 2. Widget de Input (Search)
             let search_text = Paragraph::new(app.query.clone())
                 .style(Style::default().fg(Color::Yellow))
-                .block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .title(" Buscar Experimento "),
-                );
+                .block(Block::default().borders(Borders::ALL).title(" Search "));
             f.render_widget(search_text, chunks[0]);
 
             // 3. Widget de Lista
@@ -127,7 +123,7 @@ fn run_app(
                 .collect();
 
             let list = List::new(items)
-                .block(Block::default().borders(Borders::ALL).title(" Resultados "))
+                .block(Block::default().borders(Borders::ALL).title(" Folders "))
                 .highlight_style(
                     Style::default()
                         .bg(Color::Blue)
@@ -190,7 +186,7 @@ fn run_app(
 
 fn main() -> Result<()> {
     // 1. Setup do diretório
-    let home = dirs::home_dir().expect("Home não encontrado");
+    let home = dirs::home_dir().expect("Home not found");
     let tries_dir = home.join("src/tries");
     fs::create_dir_all(&tries_dir)?;
 
@@ -256,7 +252,7 @@ fn main() -> Result<()> {
                         println!("cd '{}'", new_path.to_string_lossy());
                     }
                     _ => {
-                        eprintln!("Erro: Falha ao clonar o repositório.");
+                        eprintln!("Error: Failed to clone the repository.");
                     }
                 }
             } else {
