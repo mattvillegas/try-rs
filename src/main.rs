@@ -8,6 +8,7 @@ use crossterm::{
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
 use ratatui::{prelude::*, widgets::*};
+use serde::Deserialize;
 use std::process::Stdio;
 use std::{fs, io, path::PathBuf, time::SystemTime};
 
@@ -297,11 +298,67 @@ fn run_app(
     Ok(app.final_selection)
 }
 
+// Representação do nosso arquivo TOML
+#[derive(Deserialize)]
+struct Config {
+    tries_path: Option<String>,
+}
+
+// Função auxiliar para substituir "~" pelo caminho real da home
+fn expand_path(path_str: &str) -> PathBuf {
+    if path_str.starts_with("~/") {
+        if let Some(home) = dirs::home_dir() {
+            // Remove o "~/" (primeiros 2 chars) e junta com o home
+            return home.join(&path_str[2..]);
+        }
+    }
+    PathBuf::from(path_str)
+}
+
+fn get_configuration_path() -> PathBuf {
+    // 1. Tenta achar o diretório de config padrão (~/.config)
+    let config_dir = dirs::config_dir().unwrap_or_else(|| {
+        // Fallback se não achar
+        dirs::home_dir()
+            .expect("Home não encontrada")
+            .join(".config")
+    });
+
+    // 2. Monta o caminho: ~/.config/try-rs/config.toml
+    let config_file = config_dir.join("try-rs").join("config.toml");
+
+    // 3. Define o padrão antigo (fallback)
+    let default_path = dirs::home_dir()
+        .expect("Home não encontrada")
+        .join("src/tries");
+
+    // 4. Se o arquivo existe, tenta ler
+    if config_file.exists() {
+        if let Ok(contents) = fs::read_to_string(&config_file) {
+            if let Ok(config) = toml::from_str::<Config>(&contents) {
+                if let Some(path_str) = config.tries_path {
+                    return expand_path(&path_str);
+                }
+            }
+        }
+    }
+
+    // Se nada der certo ou não tiver config, retorna o padrão
+    default_path
+}
+
 fn main() -> Result<()> {
     // 1. Setup do diretório
-    let home = dirs::home_dir().expect("Home not found");
-    let tries_dir = home.join("src/tries");
-    fs::create_dir_all(&tries_dir)?;
+    // let home = dirs::home_dir().expect("Home not found");
+    // let tries_dir = home.join("src/tries");
+    // fs::create_dir_all(&tries_dir)?;
+    //
+    let tries_dir = get_configuration_path();
+
+    // Garante que o diretório existe (seja o do config ou o padrão)
+    if !tries_dir.exists() {
+        fs::create_dir_all(&tries_dir)?;
+    }
 
     // 2. Verifica argumentos da linha de comando
     let args: Vec<String> = std::env::args().collect();
