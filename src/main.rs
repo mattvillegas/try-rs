@@ -18,7 +18,7 @@ enum AppMode {
     DeleteConfirm,
 }
 
-// Modelo de dados (igual ao anterior)
+// Data model (same as before)
 #[derive(Clone)]
 struct TryEntry {
     name: String,
@@ -26,14 +26,14 @@ struct TryEntry {
     score: i64,
 }
 
-// O estado da nossa TUI
+// Our TUI state
 struct App {
-    query: String,                   // O que o usuário digitou
-    all_entries: Vec<TryEntry>,      // Todos os diretórios encontrados
-    filtered_entries: Vec<TryEntry>, // Diretórios filtrados pela busca
-    selected_index: usize,           // Qual item está selecionado na lista
-    should_quit: bool,               // Flag para sair do loop
-    final_selection: Option<String>, // O resultado final (para o shell)
+    query: String,                   // What the user typed
+    all_entries: Vec<TryEntry>,      // All directories found
+    filtered_entries: Vec<TryEntry>, // Directories filtered by search
+    selected_index: usize,           // Which item is currently selected in the list
+    should_quit: bool,               // Flag to exit the loop
+    final_selection: Option<String>, // The final result (for the shell)
     mode: AppMode,
 }
 
@@ -53,7 +53,7 @@ impl App {
                 }
             }
         }
-        // Ordena inicial: mais recentes primeiro
+        // Initial sort: most recent first
         entries.sort_by(|a, b| b.modified.cmp(&a.modified));
 
         Self {
@@ -67,7 +67,7 @@ impl App {
         }
     }
 
-    // Lógica de atualização do filtro
+    // Filter update logic
     fn update_search(&mut self) {
         let matcher = SkimMatcherV2::default();
 
@@ -86,26 +86,26 @@ impl App {
                 })
                 .collect();
 
-            // Ordena pelo score do fuzzy
+            // Sort by fuzzy score
             self.filtered_entries.sort_by(|a, b| b.score.cmp(&a.score));
         }
-        self.selected_index = 0; // Reseta a seleção para o topo
+        self.selected_index = 0; // Resets the selection to the top
     }
 
-    // NOVO MÉTODO: Função para apagar o item selecionado
+    // Function to delete the selected item
     fn delete_selected(&mut self, base_path: &std::path::Path) {
         if let Some(entry) = self.filtered_entries.get(self.selected_index) {
             let path_to_remove = base_path.join(&entry.name);
 
-            // Tenta remover o diretório
+            // Attempts to remove the directory
             if fs::remove_dir_all(&path_to_remove).is_ok() {
-                // Remove da lista em memória 'all_entries'
+                // Remove from the in-memory 'all_entries' list
                 self.all_entries.retain(|e| e.name != entry.name);
-                // Atualiza a pesquisa para refrescar a lista filtrada
+                // Updates the search to refresh the filtered list
                 self.update_search();
             }
         }
-        // Volta ao modo normal
+        // Returns to normal mode
         self.mode = AppMode::Normal;
     }
 }
@@ -113,12 +113,12 @@ impl App {
 fn draw_popup(f: &mut Frame, title: &str, message: &str) {
     let area = f.area();
 
-    // 1. Define uma área no centro (60% de largura, 20% de altura)
+    // 1. Define an area in the center (60% width, 20% height)
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Percentage(40),
-            Constraint::Length(3), // Altura do popup
+            Constraint::Length(3),
             Constraint::Percentage(40),
         ])
         .split(area);
@@ -127,19 +127,19 @@ fn draw_popup(f: &mut Frame, title: &str, message: &str) {
         .direction(Direction::Horizontal)
         .constraints([
             Constraint::Percentage(20),
-            Constraint::Percentage(60), // Largura do popup
+            Constraint::Percentage(60),
             Constraint::Percentage(20),
         ])
         .split(popup_layout[1])[1];
 
-    // 2. Limpa a área do popup (para não ver o texto de trás misturado)
+    // 2. Clears the popup area (so the background text doesn't show through)
     f.render_widget(Clear, popup_area);
 
-    // 3. Cria o bloco com borda vermelha (alerta)
+    // 3. Creates the block with a red border (alert)
     let block = Block::default()
         .title(title)
         .borders(Borders::ALL)
-        .style(Style::default().bg(Color::DarkGray)); // Fundo cinza escuro
+        .style(Style::default().bg(Color::DarkGray));
 
     let paragraph = Paragraph::new(message)
         .block(block)
@@ -153,14 +153,11 @@ fn run_app(
     terminal: &mut Terminal<CrosstermBackend<io::Stderr>>,
     mut app: App,
 ) -> Result<Option<String>> {
-    // Precisamos do caminho base para poder deletar
-    // (Poderíamos ter guardado na struct App, mas vamos pegar do contexto aqui)
-    let home = dirs::home_dir().expect("Home não encontrado");
+    let home = dirs::home_dir().expect("Folder not found");
     let tries_dir = home.join("src/tries");
 
     while !app.should_quit {
         terminal.draw(|f| {
-            // --- DESENHO DA LISTA (Normal) ---
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([
@@ -228,8 +225,8 @@ fn run_app(
             // --- DESENHO DO POPUP (Se estiver no modo DeleteConfirm) ---
             if app.mode == AppMode::DeleteConfirm {
                 if let Some(selected) = app.filtered_entries.get(app.selected_index) {
-                    let msg = format!("Apagar '{}'? (y/n)", selected.name);
-                    draw_popup(f, " ATENÇÃO ", &msg);
+                    let msg = format!("Delete '{}'? (y/n)", selected.name);
+                    draw_popup(f, " WARNING ", &msg);
                 }
             }
         })?;
@@ -319,9 +316,7 @@ fn get_configuration_path() -> PathBuf {
     // 1. Tenta achar o diretório de config padrão (~/.config)
     let config_dir = dirs::config_dir().unwrap_or_else(|| {
         // Fallback se não achar
-        dirs::home_dir()
-            .expect("Home não encontrada")
-            .join(".config")
+        dirs::home_dir().expect("Folder not found").join(".config")
     });
 
     // 2. Monta o caminho: ~/.config/try-rs/config.toml
@@ -329,7 +324,7 @@ fn get_configuration_path() -> PathBuf {
 
     // 3. Define o padrão antigo (fallback)
     let default_path = dirs::home_dir()
-        .expect("Home não encontrada")
+        .expect("Folder not found")
         .join("src/tries");
 
     // 4. Se o arquivo existe, tenta ler
@@ -348,11 +343,6 @@ fn get_configuration_path() -> PathBuf {
 }
 
 fn main() -> Result<()> {
-    // 1. Setup do diretório
-    // let home = dirs::home_dir().expect("Home not found");
-    // let tries_dir = home.join("src/tries");
-    // fs::create_dir_all(&tries_dir)?;
-    //
     let tries_dir = get_configuration_path();
 
     // Garante que o diretório existe (seja o do config ou o padrão)
