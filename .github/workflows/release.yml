@@ -9,6 +9,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write
+
+    env:
+      BIN_NAME: try-rs
+
     strategy:
       matrix:
         target:
@@ -22,12 +28,13 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Build
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --release --target ${{ matrix.target }} --bin $BIN_NAME
 
       - name: Package
         run: |
           cd target/${{ matrix.target }}/release
-          tar -czvf meuapp-${{ matrix.target }}.tar.gz meuapp
+          ls -lh
+          tar -czvf $BIN_NAME-${{ matrix.target }}.tar.gz $BIN_NAME
 
       - name: Upload Release
         uses: softprops/action-gh-release@v2
