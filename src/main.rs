@@ -96,14 +96,27 @@ impl App {
     fn delete_selected(&mut self, base_path: &std::path::Path) {
         if let Some(entry) = self.filtered_entries.get(self.selected_index) {
             let path_to_remove = base_path.join(&entry.name);
+            // let path_string = path_to_remove.to_str();
+
+            match fs::remove_dir_all(&path_to_remove) {
+                Ok(_) => {
+                    self.all_entries.retain(|e| e.name != entry.name);
+                    self.update_search();
+                }
+                Err(e) => {
+                    eprintln!("erro: {}", e); // mensagem humana
+                    eprintln!("kind: {:?}", e.kind()); // categoria
+                    eprintln!("raw os error: {:?}", e.raw_os_error());
+                }
+            }
 
             // Attempts to remove the directory
-            if fs::remove_dir_all(&path_to_remove).is_ok() {
-                // Remove from the in-memory 'all_entries' list
-                self.all_entries.retain(|e| e.name != entry.name);
-                // Updates the search to refresh the filtered list
-                self.update_search();
-            }
+            // if fs::remove_dir_all(&path_to_remove).is_ok() {
+            //     // Remove from the in-memory 'all_entries' list
+            //     self.all_entries.retain(|e| e.name != entry.name);
+            //     // Updates the search to refresh the filtered list
+            //     self.update_search();
+            // }
         }
         // Returns to normal mode
         self.mode = AppMode::Normal;
@@ -153,8 +166,10 @@ fn run_app(
     terminal: &mut Terminal<CrosstermBackend<io::Stderr>>,
     mut app: App,
 ) -> Result<Option<String>> {
-    let home = dirs::home_dir().expect("Folder not found");
-    let tries_dir = home.join("src/tries");
+    // let home = dirs::home_dir().expect("Folder not found");
+    // let tries_dir = home.join("src/tries");
+
+    let tries_dir = get_configuration_path();
 
     while !app.should_quit {
         terminal.draw(|f| {
