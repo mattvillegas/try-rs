@@ -44,16 +44,17 @@ struct Theme {
 impl Default for Theme {
     fn default() -> Self {
         Self {
-            title_try: Color::Cyan,
-            title_rs: Color::Red,
-            search_box: Color::Yellow,
-            list_date: Color::DarkGray,
-            list_highlight_bg: Color::DarkGray,
-            list_highlight_fg: Color::White,
-            help_text: Color::DarkGray,
-            status_message: Color::Red,
-            popup_bg: Color::DarkGray,
-            popup_text: Color::Red,
+            // Catppuccin Mocha Palette
+            title_try: Color::Rgb(137, 180, 250),       // Blue
+            title_rs: Color::Rgb(243, 139, 168),        // Red
+            search_box: Color::Rgb(250, 179, 135),      // Peach
+            list_date: Color::Rgb(166, 173, 200),       // Subtext0
+            list_highlight_bg: Color::Rgb(88, 91, 112), // Surface2
+            list_highlight_fg: Color::Rgb(205, 214, 244), // Text
+            help_text: Color::Rgb(147, 153, 178),       // Overlay2
+            status_message: Color::Rgb(249, 226, 175),  // Yellow
+            popup_bg: Color::Rgb(30, 30, 46),           // Base
+            popup_text: Color::Rgb(243, 139, 168),      // Red
         }
     }
 }
