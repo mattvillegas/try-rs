@@ -134,6 +134,8 @@ You can also bypass the UI:
 | `try-rs <name>`                              | Create (or jump to) a named experiment       |
 | `try-rs <https://github.com/user/repo>` | Clones a repository into a dated folder      |
 | `try-rs --setup <shell>` | setup shell integration (fish, zsh, bash)    |
+| `try-rs --version`                           | Show application version                     |
+| `try-rs --help`                              | Show help message                            |
 
 🤝 Contributing
 Pull requests are welcome! For major changes, please open an issue first to discuss what you would like to change.

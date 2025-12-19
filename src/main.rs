@@ -490,8 +490,8 @@ end
 "#;
 
     fs::write(&file_path, content)?;
-    println!("Fish function created at: {}", file_path.display());
-    println!("You may need to restart your shell or run 'source {}' to apply changes.", file_path.display());
+    eprintln!("Fish function created at: {}", file_path.display());
+    eprintln!("You may need to restart your shell or run 'source {}' to apply changes.", file_path.display());
 
     Ok(())
 }
@@ -521,9 +521,9 @@ fn setup_zsh() -> Result<()> {
 "#;
 
     fs::write(&file_path, content)?;
-    println!("ZSH function file created at: {}", file_path.display());
-    println!("You need to source this file in your ~/.zshrc:");
-    println!("source {}", file_path.display());
+    eprintln!("ZSH function file created at: {}", file_path.display());
+    eprintln!("You need to source this file in your ~/.zshrc:");
+    eprintln!("source {}", file_path.display());
 
     Ok(())
 }
@@ -553,11 +553,25 @@ fn setup_bash() -> Result<()> {
 "#;
 
     fs::write(&file_path, content)?;
-    println!("Bash function file created at: {}", file_path.display());
-    println!("You need to source this file in your ~/.bashrc:");
-    println!("source {}", file_path.display());
+    eprintln!("Bash function file created at: {}", file_path.display());
+    eprintln!("You need to source this file in your ~/.bashrc:");
+    eprintln!("source {}", file_path.display());
 
     Ok(())
+}
+
+fn print_help() {
+    eprintln!("try-rs {}", env!("CARGO_PKG_VERSION"));
+    eprintln!("A blazing fast, Rust-based workspace manager for your temporary experiments.");
+    eprintln!();
+    eprintln!("Usage:");
+    eprintln!("  try-rs [NAME|URL]     Create or jump to an experiment / Clone a repo");
+    eprintln!("  try-rs                Open the TUI (Terminal User Interface)");
+    eprintln!();
+    eprintln!("Options:");
+    eprintln!("  --setup <shell>       Generate shell integration code (fish, zsh, bash)");
+    eprintln!("  --version             Show version information");
+    eprintln!("  --help, -h            Show this help message");
 }
 
 fn main() -> Result<()> {
@@ -570,6 +584,16 @@ fn main() -> Result<()> {
 
     // 2. Check command line arguments
     let args: Vec<String> = std::env::args().collect();
+
+    if args.len() > 1 && (args[1] == "--help" || args[1] == "-h") {
+        print_help();
+        return Ok(());
+    }
+
+    if args.len() > 1 && args[1] == "--version" {
+        eprintln!("try-rs {}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
 
     if args.len() > 2 && args[1] == "--setup" {
         match args[2].as_str() {
