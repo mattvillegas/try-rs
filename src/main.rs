@@ -35,6 +35,7 @@ struct App {
     should_quit: bool,               // Flag to exit the loop
     final_selection: Option<String>, // The final result (for the shell)
     mode: AppMode,
+    status_message: Option<String>,  // Feedback message for the user
 }
 
 impl App {
@@ -64,6 +65,7 @@ impl App {
             should_quit: false,
             final_selection: None,
             mode: AppMode::Normal,
+            status_message: None,
         }
     }
 
@@ -94,25 +96,26 @@ impl App {
 
     // Function to delete the selected item
     fn delete_selected(&mut self, base_path: &std::path::Path) {
-        if let Some(entry) = self.filtered_entries.get(self.selected_index) {
-            let path_to_remove = base_path.join(&entry.name);
-            // let path_string = path_to_remove.to_str();
+    if let Some(entry_name) = self
+        .filtered_entries
+        .get(self.selected_index)
+        .map(|e| e.name.clone())
+    {
+        let path_to_remove = base_path.join(&entry_name);
 
-            match fs::remove_dir_all(&path_to_remove) {
-                Ok(_) => {
-                    self.all_entries.retain(|e| e.name != entry.name);
-                    self.update_search();
-                }
-                Err(e) => {
-                    eprintln!("erro: {}", e); // mensagem humana
-                    eprintln!("kind: {:?}", e.kind()); // categoria
-                    eprintln!("raw os error: {:?}", e.raw_os_error());
-                }
+        match fs::remove_dir_all(&path_to_remove) {
+            Ok(_) => {
+                self.all_entries.retain(|e| e.name != entry_name);
+                self.update_search();
+                self.status_message = Some(format!("Deleted: {}", path_to_remove.display()));
+            }
+            Err(e) => {
+                self.status_message = Some(format!("Error deleting: {}", e));
             }
         }
-        // Returns to normal mode
-        self.mode = AppMode::Normal;
     }
+    self.mode = AppMode::Normal;
+}
 }
 
 fn draw_popup(f: &mut Frame, title: &str, message: &str) {
@@ -166,16 +169,25 @@ fn run_app(
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([
+                    Constraint::Length(2),
                     Constraint::Length(3),
                     Constraint::Min(1),
                     Constraint::Length(1),
                 ])
                 .split(f.area());
 
+            let title = Paragraph::new(Line::from(vec![
+                Span::styled("TRY", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+                Span::styled("-", Style::default().fg(Color::DarkGray)),
+                Span::styled("RS", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            ]))
+            .alignment(Alignment::Center);
+            f.render_widget(title, chunks[0]);
+
             let search_text = Paragraph::new(app.query.clone())
                 .style(Style::default().fg(Color::Yellow))
-                .block(Block::default().borders(Borders::ALL).title(" Search "));
-            f.render_widget(search_text, chunks[0]);
+                .block(Block::default().borders(Borders::ALL).title(" Search/New "));
+            f.render_widget(search_text, chunks[1]);
 
             let items: Vec<ListItem> = app
                 .filtered_entries
@@ -206,26 +218,32 @@ fn run_app(
 
             let mut state = ListState::default();
             state.select(Some(app.selected_index));
-            f.render_stateful_widget(list, chunks[1], &mut state);
+            f.render_stateful_widget(list, chunks[2], &mut state);
 
             // --- Footer Widget (Help) ---
-            // We use 'Line' and 'Span' to style parts of the text (bold keys)
-            let help_text = Line::from(vec![
-                Span::styled("↑↓", Style::default().add_modifier(Modifier::BOLD)),
-                Span::raw(": Navigate  "),
-                Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
-                Span::raw(": Select  "),
-                Span::styled("Ctrl-D", Style::default().add_modifier(Modifier::BOLD)),
-                Span::raw(": Delete  "),
-                Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
-                Span::raw(": Cancel"),
-            ]);
+            // If there is a status message, show it instead of help, or alongside it.
+            let help_text = if let Some(msg) = &app.status_message {
+                 Line::from(vec![
+                    Span::styled(msg, Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+                ])
+            } else {
+                Line::from(vec![
+                    Span::styled("↑↓", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(": Navigate  "),
+                    Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(": Select  "),
+                    Span::styled("Ctrl-D", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(": Delete  "),
+                    Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(": Cancel"),
+                ])
+            };
 
             let help_message = Paragraph::new(help_text)
                 .style(Style::default().fg(Color::DarkGray)) 
                 .alignment(Alignment::Center);
 
-            f.render_widget(help_message, chunks[2]);
+            f.render_widget(help_message, chunks[3]);
 
             // --- DRAWING THE POPUP (If in DeleteConfirm mode) ---
             if app.mode == AppMode::DeleteConfirm {
@@ -251,6 +269,7 @@ fn run_app(
                                 }
                             } else {
                                 app.query.push(c);
+                                app.status_message = None; // Clear status on type
                                 app.update_search();
                             }
                         }
