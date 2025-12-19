@@ -229,11 +229,33 @@ fn run_app(
                 .iter()
                 .map(|entry| {
                     let date: DateTime<Local> = entry.modified.into();
-                    let date_str = date.format("%Y-%m-%d %H:%M");
+                    let date_str = date.format("%Y-%m-%d %H:%M").to_string();
+
+                    // Calculate available width (block borders take 2 columns)
+                    let width = chunks[2].width.saturating_sub(2) as usize;
+
+                    let date_text = format!("{}", date_str);
+                    let date_width = date_text.chars().count()+3;
+                    let icon_width = 2; // "📁" takes 2 columns
+
+                    // Calculate space for name
+                    let reserved = date_width + icon_width + 1; // +1 for min gap
+                    let available_for_name = width.saturating_sub(reserved);
+                    let name_len = entry.name.chars().count();
+
+                    let (display_name, padding) = if name_len > available_for_name {
+                        let safe_len = available_for_name.saturating_sub(3);
+                        let truncated: String = entry.name.chars().take(safe_len).collect();
+                        (format!("{}...", truncated), 1)
+                    } else {
+                        (entry.name.clone(), width.saturating_sub(icon_width + name_len + date_width))
+                    };
+
                     let content = Line::from(vec![
-                        Span::raw(format!("📁{:<30}", entry.name)),
+                        Span::raw(format!("📁{}", display_name)),
+                        Span::raw(" ".repeat(padding)),
                         Span::styled(
-                            format!("({})", date_str),
+                            date_text,
                             Style::default().fg(app.theme.list_date),
                         ),
                     ]);
