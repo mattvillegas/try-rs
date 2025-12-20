@@ -215,6 +215,11 @@ fn run_app(
                 ])
                 .split(f.area());
 
+            let content_chunks = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([Constraint::Percentage(70), Constraint::Percentage(30)])
+                .split(chunks[2]);
+
             let title = Paragraph::new(Line::from(vec![
                 Span::styled("🦀 try", Style::default().fg(app.theme.title_try).add_modifier(Modifier::BOLD)),
                 Span::styled("-", Style::default().fg(Color::DarkGray)),
@@ -238,7 +243,7 @@ fn run_app(
                     let date_str = date.format("%Y-%m-%d %H:%M").to_string();
 
                     // Calculate available width (block borders take 2 columns)
-                    let width = chunks[2].width.saturating_sub(5) as usize;
+                    let width = content_chunks[0].width.saturating_sub(5) as usize;
 
                     let date_text = format!("{}", date_str);
                     let date_width = date_text.chars().count();
@@ -287,7 +292,39 @@ fn run_app(
 
             let mut state = ListState::default();
             state.select(Some(app.selected_index));
-            f.render_stateful_widget(list, chunks[2], &mut state);
+            f.render_stateful_widget(list, content_chunks[0], &mut state);
+
+            // Preview Widget
+            if let Some(selected) = app.filtered_entries.get(app.selected_index) {
+                let preview_path = app.base_path.join(&selected.name);
+                let mut preview_lines = Vec::new();
+
+                if let Ok(entries) = fs::read_dir(&preview_path) {
+                    // Limit items to height of block to avoid reading too much
+                    for entry in entries.take(content_chunks[1].height.saturating_sub(2) as usize) {
+                        if let Ok(e) = entry {
+                            let file_name = e.file_name().to_string_lossy().to_string();
+                            let is_dir = e.file_type().map(|t| t.is_dir()).unwrap_or(false);
+                            let icon = if is_dir { "📁 " } else { "📄 " };
+                            preview_lines.push(Line::from(vec![
+                                Span::styled(icon, Style::default().fg(app.theme.title_try)),
+                                Span::raw(file_name),
+                            ]));
+                        }
+                    }
+                }
+
+                if preview_lines.is_empty() {
+                    preview_lines.push(Line::from(Span::styled(" (empty) ", Style::default().fg(Color::DarkGray))));
+                }
+
+                let preview = Paragraph::new(preview_lines)
+                    .block(Block::default().borders(Borders::ALL).title(" Preview "));
+                f.render_widget(preview, content_chunks[1]);
+            } else {
+                let preview = Block::default().borders(Borders::ALL).title(" Preview ");
+                f.render_widget(preview, content_chunks[1]);
+            }
 
             // --- Footer Widget (Help) ---
             // If there is a status message, show it instead of help, or alongside it.
