@@ -28,6 +28,8 @@ While the original is a lightweight Ruby script, **try-rs** aims to bring the sa
 * **Auto-Dating:** Creates directories like `2025-12-17-rust-test` automatically.
 * **Git Integration:** Paste a GitHub/GitLab URL, and it will auto-clone it into a dated folder.
     * `try-rs https://github.com/ratatui/ratatui` → clones to `.../2025-12-17-ratatui`
+* **Visual Indicators:** Automatically detects and marks Git repositories with an icon () in the list.
+* **Theming:** Fully customizable UI colors via config file (comes with **Catppuccin Mocha** as default).
 * **Terminal UI:** A beautiful TUI built with Ratatui to browse your projects.
 * **Safe Deletion:** Delete old experiments directly from the UI (`Ctrl+D`) with a confirmation popup.
 * **Configurable:** Supports `XDG Base Directory` specification (`~/.config/try-rs/config.toml`).
@@ -38,6 +40,7 @@ While the original is a lightweight Ruby script, **try-rs** aims to bring the sa
 
 * Rust & Cargo installed.
 * A shell (Fish, Zsh, Bash).
+* A **Nerd Font** installed (required for icons like  and 🦀).
 
 ### Building from source
 
@@ -89,7 +92,7 @@ try-rs --setup bash
 
 
 2. Config File
-By default, experiments are stored in ~/src/tries, and colors. To change this, create ~/.config/try-rs/config.toml:
+By default, experiments are stored in `~/work/tries`. You can customize the path and the UI colors (themes). To change this, create `~/.config/try-rs/config.toml`:
 
 ```toml
 # ~/.config/try-rs/config.toml
