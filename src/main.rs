@@ -238,7 +238,7 @@ fn run_app(
                     let date_str = date.format("%Y-%m-%d %H:%M").to_string();
 
                     // Calculate available width (block borders take 2 columns)
-                    let width = chunks[2].width.saturating_sub(2) as usize;
+                    let width = chunks[2].width.saturating_sub(5) as usize;
 
                     let date_text = format!("{}", date_str);
                     let date_width = date_text.chars().count();
