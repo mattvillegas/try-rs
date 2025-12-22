@@ -3,10 +3,10 @@ use chrono::{DateTime, Local};
 use crossterm::{
     event::{self, Event, KeyCode},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
+use fuzzy_matcher::skim::SkimMatcherV2;
 use ratatui::{prelude::*, widgets::*};
 use serde::Deserialize;
 use std::process::Stdio;
@@ -635,8 +635,26 @@ fn setup_zsh() -> Result<()> {
 
     fs::write(&file_path, content)?;
     eprintln!("ZSH function file created at: {}", file_path.display());
-    eprintln!("You need to source this file in your ~/.zshrc:");
-    eprintln!("source {}", file_path.display());
+
+    let home_dir = dirs::home_dir().expect("Could not find home directory");
+    let zshrc_path = home_dir.join(".zshrc");
+    let source_cmd = format!("source {}", file_path.display());
+
+    if zshrc_path.exists() {
+        let zshrc_content = fs::read_to_string(&zshrc_path)?;
+        if !zshrc_content.contains(&source_cmd) {
+            use std::io::Write;
+            let mut file = fs::OpenOptions::new().append(true).open(&zshrc_path)?;
+            writeln!(file, "\n# try-rs integration")?;
+            writeln!(file, "{}", source_cmd)?;
+            eprintln!("Added configuration to ~/.zshrc");
+        } else {
+            eprintln!("Configuration already present in ~/.zshrc");
+        }
+    } else {
+        eprintln!("You need to source this file in your ~/.zshrc:");
+        eprintln!("{}", source_cmd);
+    }
 
     Ok(())
 }
@@ -669,8 +687,26 @@ fn setup_bash() -> Result<()> {
 
     fs::write(&file_path, content)?;
     eprintln!("Bash function file created at: {}", file_path.display());
-    eprintln!("You need to source this file in your ~/.bashrc:");
-    eprintln!("source {}", file_path.display());
+
+    let home_dir = dirs::home_dir().expect("Could not find home directory");
+    let bashrc_path = home_dir.join(".bashrc");
+    let source_cmd = format!("source {}", file_path.display());
+
+    if bashrc_path.exists() {
+        let bashrc_content = fs::read_to_string(&bashrc_path)?;
+        if !bashrc_content.contains(&source_cmd) {
+            use std::io::Write;
+            let mut file = fs::OpenOptions::new().append(true).open(&bashrc_path)?;
+            writeln!(file, "\n# try-rs integration")?;
+            writeln!(file, "{}", source_cmd)?;
+            eprintln!("Added configuration to ~/.bashrc");
+        } else {
+            eprintln!("Configuration already present in ~/.bashrc");
+        }
+    } else {
+        eprintln!("You need to source this file in your ~/.bashrc:");
+        eprintln!("{}", source_cmd);
+    }
 
     Ok(())
 }
