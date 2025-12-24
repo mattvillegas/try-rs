@@ -264,8 +264,13 @@ fn run_app(
                 .filtered_entries
                 .iter()
                 .map(|entry| {
-                    let date: DateTime<Local> = entry.modified.into();
-                    let date_str = date.format("%Y-%m-%d %H:%M").to_string();
+                    let now = SystemTime::now();
+                    let elapsed = now.duration_since(entry.modified).unwrap_or(std::time::Duration::ZERO);
+                    let secs = elapsed.as_secs();
+                    let days = secs / 86400;
+                    let hours = (secs % 86400) / 3600;
+                    let minutes = (secs % 3600) / 60;
+                    let date_str = format!("({:02} days {:02}h {:02}m)", days, hours, minutes);
 
                     // Calculate available width (block borders take 2 columns)
                     let width = content_chunks[0].width.saturating_sub(5) as usize;
