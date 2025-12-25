@@ -3,6 +3,8 @@
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Rust](https://img.shields.io/badge/built_with-Rust-d45500.svg)
+[![Nix ready](https://img.shields.io/badge/nix-ready-brightgreen?logo=nixos)](https://github.com/tassiovirginio/try-rs)
+[![AUR version](https://img.shields.io/aur/version/try-rs-bin)](https://aur.archlinux.org/packages/try-rs-bin)
 
 
 **try-rs** is a CLI tool designed to manage the chaos of temporary projects. Instead of cluttering your Desktop or `/tmp` with `test1`, `new-test`, and `final-test`, `try-rs` organizes them into date-prefixed directories, offering a robust TUI (Terminal User Interface) to create, navigate, and clean up your experiments.
