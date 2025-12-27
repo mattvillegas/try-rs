@@ -300,13 +300,19 @@ fn run_app(
                     let cargo_icon = if entry.is_cargo { " " } else { "" };
                     let cargo_width = if entry.is_cargo { 2 } else { 0 };
                     let icon_width = 2; // "📁" takes 2 columns
-                    
+
                     let created_dt: chrono::DateTime<Local> = entry.created.into();
                     let created_text = created_dt.format("%Y-%m-%d").to_string();
                     let created_width = created_text.chars().count();
 
                     // Calculate space for name
-                    let reserved = date_width + git_width + mise_width + cargo_width + icon_width + created_width + 2; // +2 for gaps
+                    let reserved = date_width
+                        + git_width
+                        + mise_width
+                        + cargo_width
+                        + icon_width
+                        + created_width
+                        + 2; // +2 for gaps
                     let available_for_name = width.saturating_sub(reserved);
                     let name_len = entry.name.chars().count();
 
@@ -317,7 +323,16 @@ fn run_app(
                     } else {
                         (
                             entry.name.clone(),
-                            width.saturating_sub(icon_width + created_width + 1 + name_len + date_width + git_width + mise_width + cargo_width),
+                            width.saturating_sub(
+                                icon_width
+                                    + created_width
+                                    + 1
+                                    + name_len
+                                    + date_width
+                                    + git_width
+                                    + mise_width
+                                    + cargo_width,
+                            ),
                         )
                     };
 
@@ -758,6 +773,76 @@ fn setup_bash() -> Result<()> {
     Ok(())
 }
 
+fn setup_powershell() -> Result<()> {
+    // Use Documents/PowerShell for Windows or .config/powershell for Linux/Mac
+    let config_dir = if cfg!(target_os = "windows") {
+        dirs::document_dir()
+            .expect("Could not find Documents directory")
+            .join("PowerShell")
+    } else {
+        dirs::config_dir()
+            .expect("Could not find config directory")
+            .join("powershell")
+    };
+
+    if !config_dir.exists() {
+        fs::create_dir_all(&config_dir)?;
+    }
+
+    let file_path = config_dir.join("try-rs.ps1");
+    let content = r#"function try-rs {
+    # Captures the output of the binary (stdout) which is the "cd" command
+    # The TUI is rendered on stderr, so it doesn't interfere.
+    $output = command try-rs $args
+
+    if ($output) {
+        Invoke-Expression $output
+    }
+}
+"#;
+
+    fs::write(&file_path, content)?;
+    eprintln!("PowerShell function created at: {}", file_path.display());
+
+    // Attempt to add to profile
+    let profile_path = if cfg!(target_os = "windows") {
+        if let Ok(path) = std::env::var("PROFILE") {
+            PathBuf::from(path)
+        } else {
+            let home = dirs::home_dir().expect("No home dir");
+            home.join("Documents/WindowsPowerShell/Microsoft.PowerShell_profile.ps1")
+        }
+    } else {
+        let home = dirs::home_dir().expect("No home dir");
+        home.join(".config/powershell/Microsoft.PowerShell_profile.ps1")
+    };
+
+    // The dot sourcing command
+    let source_cmd = format!(". {}", file_path.display());
+
+    if profile_path.exists() {
+        if let Ok(profile_content) = fs::read_to_string(&profile_path) {
+            if !profile_content.contains(&source_cmd) {
+                use std::io::Write;
+                let mut file = fs::OpenOptions::new().append(true).open(&profile_path)?;
+                writeln!(file, "\n# try-rs integration")?;
+                writeln!(file, "{}", source_cmd)?;
+                eprintln!("Added configuration to your PowerShell profile.");
+                eprintln!("Please restart PowerShell to apply changes.");
+            } else {
+                eprintln!("Configuration already present in your PowerShell profile.");
+            }
+        }
+    } else {
+        eprintln!("No PowerShell profile found at: {}", profile_path.display());
+        eprintln!("To enable, run the following in your PowerShell:");
+        eprintln!("  echo '{}' >> {}", source_cmd, profile_path.display());
+    }
+
+    Ok(())
+}
+
+// Define the CLI structure using Clap Derive
 #[derive(Parser)]
 #[command(name = "try-rs")]
 #[command(about = format!("🦀 try-rs {}\nA blazing fast, Rust-based workspace manager for your temporary experiments.", env!("CARGO_PKG_VERSION")), long_about = None)]
@@ -777,6 +862,8 @@ enum Shell {
     Fish,
     Zsh,
     Bash,
+    #[allow(clippy::enum_variant_names)]
+    PowerShell,
 }
 
 fn main() -> Result<()> {
@@ -794,6 +881,7 @@ fn main() -> Result<()> {
             Shell::Fish => setup_fish()?,
             Shell::Zsh => setup_zsh()?,
             Shell::Bash => setup_bash()?,
+            Shell::PowerShell => setup_powershell()?,
         }
         return Ok(());
     }
@@ -807,6 +895,8 @@ fn main() -> Result<()> {
             Some(Shell::Zsh)
         } else if shell.contains("bash") {
             Some(Shell::Bash)
+        } else if shell.contains("pwsh") || shell.contains("powershell") {
+            Some(Shell::PowerShell)
         } else {
             None
         };
@@ -825,6 +915,7 @@ fn main() -> Result<()> {
                     Shell::Fish => setup_fish()?,
                     Shell::Zsh => setup_zsh()?,
                     Shell::Bash => setup_bash()?,
+                    Shell::PowerShell => setup_powershell()?,
                 }
             }
         }
