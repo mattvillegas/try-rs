@@ -90,22 +90,22 @@ impl App {
         let mut entries = Vec::new();
         if let Ok(read_dir) = fs::read_dir(&path) {
             for entry in read_dir.flatten() {
-                if let Ok(metadata) = entry.metadata() {
-                    if metadata.is_dir() {
-                        let name = entry.file_name().to_string_lossy().to_string();
-                        let is_git = entry.path().join(".git").exists();
-                        let is_mise = entry.path().join("mise.toml").exists();
-                        let is_cargo = entry.path().join("Cargo.toml").exists();
-                        entries.push(TryEntry {
-                            name,
-                            modified: metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH),
-                            created: metadata.created().unwrap_or(SystemTime::UNIX_EPOCH),
-                            score: 0,
-                            is_git,
-                            is_mise,
-                            is_cargo,
-                        });
-                    }
+                if let Ok(metadata) = entry.metadata()
+                    && metadata.is_dir()
+                {
+                    let name = entry.file_name().to_string_lossy().to_string();
+                    let is_git = entry.path().join(".git").exists();
+                    let is_mise = entry.path().join("mise.toml").exists();
+                    let is_cargo = entry.path().join("Cargo.toml").exists();
+                    entries.push(TryEntry {
+                        name,
+                        modified: metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH),
+                        created: metadata.created().unwrap_or(SystemTime::UNIX_EPOCH),
+                        score: 0,
+                        is_git,
+                        is_mise,
+                        is_cargo,
+                    });
                 }
             }
         }
@@ -550,11 +550,11 @@ struct Config {
 
 // Helper function to replace "~" with the actual home path
 fn expand_path(path_str: &str) -> PathBuf {
-    if path_str.starts_with("~/") || (cfg!(windows) && path_str.starts_with("~\\")) {
-        if let Some(home) = dirs::home_dir() {
-            // Remove "~/" (first 2 chars) and join with home
-            return home.join(&path_str[2..]);
-        }
+    if (path_str.starts_with("~/") || (cfg!(windows) && path_str.starts_with("~\\")))
+        && let Some(home) = dirs::home_dir()
+    {
+        // Remove "~/" (first 2 chars) and join with home
+        return home.join(&path_str[2..]);
     }
     PathBuf::from(path_str)
 }
@@ -791,12 +791,45 @@ fn setup_powershell() -> Result<()> {
 
     let file_path = config_dir.join("try-rs.ps1");
     let content = r#"function try-rs {
-    # Captures the output of the binary (stdout) which is the "cd" command
-    # The TUI is rendered on stderr, so it doesn't interfere.
-    $output = command try-rs $args
+    $output = $null
+
+    # For Windows PowerShell (PowerShell 5.1), we need to ensure that PowerShell 
+    # emits the try-rs binary output as UTF-8 to properly render the emojis used in the help text
+    if ($PSVersionTable.PSVersion.Major -lt 6) {
+        $currentCP = (chcp).split(":")[-1].trim()
+        $currentEncoding = [Console]::OutputEncoding
+
+        try {
+
+            # set the encoding to force UTF8
+            chcp 65001 | Out-Null
+            [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+            $output = try-rs.exe @args
+        }
+
+        # restore the encoding when we're done so the shell is still in a usable state for other commands
+        finally {
+            chcp $currentCP | Out-Null
+            [Console]::OutputEncoding = $currentEncoding
+        }
+    }
+
+    # Otherwise this is modern Pwsh, no need for encoding shenanigans
+    else {
+        $output = try-rs.exe @args
+    }
 
     if ($output) {
-        Invoke-Expression $output
+        $strOutput = if ($output -is [array]) { $output -join "`n" } else { $output }
+
+        if ($strOutput.Trim().StartsWith("cd ")) {
+            Invoke-Expression $strOutput
+        }
+
+        # Skip invoke-expression if this is just displaying the help text
+        else {
+            Write-Output $strOutput
+        }
     }
 }
 "#;
@@ -804,18 +837,24 @@ fn setup_powershell() -> Result<()> {
     fs::write(&file_path, content)?;
     eprintln!("PowerShell function created at: {}", file_path.display());
 
-    // Attempt to add to profile
-    let profile_path = if cfg!(target_os = "windows") {
-        if let Ok(path) = std::env::var("PROFILE") {
-            PathBuf::from(path)
-        } else {
-            let home = dirs::home_dir().expect("No home dir");
-            home.join("Documents/WindowsPowerShell/Microsoft.PowerShell_profile.ps1")
-        }
-    } else {
-        let home = dirs::home_dir().expect("No home dir");
-        home.join(".config/powershell/Microsoft.PowerShell_profile.ps1")
-    };
+    // Determine profile path based on priority:
+    // 1. $PROFILE environment variable
+    // 2. Documents/WindowsPowerShell/...
+    // 3. .config/powershell/...
+    let profile_path = std::env::var("PROFILE")
+        .ok()
+        .map(PathBuf::from)
+        .filter(|p| p.exists() || p.parent().is_some_and(|parent| parent.exists()))
+        .or_else(|| {
+            dirs::home_dir().map(|home| {
+                home.join("Documents/WindowsPowerShell/Microsoft.PowerShell_profile.ps1")
+            })
+        })
+        .or_else(|| {
+            dirs::home_dir()
+                .map(|home| home.join(".config/powershell/Microsoft.PowerShell_profile.ps1"))
+        })
+        .unwrap_or_default();
 
     // The dot sourcing command
     let source_cmd = format!(". {}", file_path.display());
