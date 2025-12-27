@@ -11,7 +11,7 @@ use ratatui::{prelude::*, widgets::*};
 use serde::Deserialize;
 use std::process::Stdio;
 use std::str::FromStr;
-use std::{fs, io, path::PathBuf, time::SystemTime};
+use std::{fs, io::{self, Write}, path::PathBuf, time::SystemTime};
 
 #[derive(Clone, Copy, PartialEq)]
 enum AppMode {
@@ -518,7 +518,7 @@ fn expand_path(path_str: &str) -> PathBuf {
     PathBuf::from(path_str)
 }
 
-fn load_configuration() -> (PathBuf, Theme, Option<String>) {
+fn load_configuration() -> (PathBuf, Theme, Option<String>, bool) {
     // 1. Try to find the default config directory (~/.config)
     let config_dir = dirs::config_dir().unwrap_or_else(|| {
         // Fallback if not found
@@ -539,6 +539,7 @@ fn load_configuration() -> (PathBuf, Theme, Option<String>) {
     let mut editor_cmd = std::env::var("VISUAL")
         .ok()
         .or_else(|| std::env::var("EDITOR").ok());
+    let mut is_first_run = false;
 
     // 4. If the file exists, try to read it
     if config_file.exists() {
@@ -577,11 +578,12 @@ fn load_configuration() -> (PathBuf, Theme, Option<String>) {
         if fs::create_dir_all(&app_config_dir).is_ok() {
             let default_content = "tries_path = \"~/work/tries\"";
             let _ = fs::write(&config_file, default_content);
+            is_first_run = true;
         }
     }
 
     // If nothing works or there is no config, return the default
-    (final_path, theme, editor_cmd)
+    (final_path, theme, editor_cmd, is_first_run)
 }
 
 fn setup_fish() -> Result<()> {
@@ -738,7 +740,7 @@ fn print_help() {
 }
 
 fn main() -> Result<()> {
-    let (tries_dir, theme, editor_cmd) = load_configuration();
+    let (tries_dir, theme, editor_cmd, is_first_run) = load_configuration();
 
     // Ensure the directory exists (either from config or default)
     if !tries_dir.exists() {
@@ -756,6 +758,38 @@ fn main() -> Result<()> {
     if args.len() > 1 && args[1] == "--version" {
         eprintln!("try-rs {}", env!("CARGO_PKG_VERSION"));
         return Ok(());
+    }
+
+    if is_first_run {
+        let is_setup = args.len() > 1 && args[1] == "--setup";
+        if !is_setup {
+            let shell = std::env::var("SHELL").unwrap_or_default();
+            let shell_type = if shell.contains("fish") {
+                Some("fish")
+            } else if shell.contains("zsh") {
+                Some("zsh")
+            } else if shell.contains("bash") {
+                Some("bash")
+            } else {
+                None
+            };
+
+            if let Some(s) = shell_type {
+                eprintln!("Detected shell: {}", s);
+                eprint!("Shell integration not configured. Do you want to set it up for {}? [Y/n] ", s);
+                io::stderr().flush()?;
+                let mut input = String::new();
+                io::stdin().read_line(&mut input)?;
+                if input.trim().is_empty() || input.trim().eq_ignore_ascii_case("y") {
+                    match s {
+                        "fish" => setup_fish()?,
+                        "zsh" => setup_zsh()?,
+                        "bash" => setup_bash()?,
+                        _ => {}
+                    }
+                }
+            }
+        }
     }
 
     if args.len() > 2 && args[1] == "--setup" {

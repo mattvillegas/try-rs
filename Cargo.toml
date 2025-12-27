@@ -1,6 +1,6 @@
 [package]
 name = "try-rs"
-version = "0.1.17"
+version = "0.1.18"
 edition = "2024"
 description = "Temporary workspace manager for fast experimentation in the terminal"
 readme = "README.md"
@@ -10,7 +10,7 @@ categories = ["command-line-utilities", "development-tools"]
 keywords = ["tui", "workspace", "experiments", "cli", "ratatui"]
 
 [dependencies]
-ratatui = "0.29"
+ratatui = "0.30.0"
 crossterm = "0.29.0"
 dirs = "6.0.0"
 fuzzy-matcher = "0.3"
