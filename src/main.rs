@@ -863,9 +863,7 @@ fn main() -> Result<()> {
             if is_git_url(&selection) {
                 let repo_name = extract_repo_name(&selection);
 
-                let now = Local::now();
-                let date_prefix = now.format("%Y-%m-%d").to_string();
-                let folder_name = format!("{}-{}", date_prefix, repo_name);
+                let folder_name = repo_name;
                 let new_path = tries_dir.join(&folder_name);
 
                 eprintln!("A clonar {} para {}...", selection, folder_name);
@@ -892,14 +890,7 @@ fn main() -> Result<()> {
                 }
             } else {
                 // CASE 3: Create an empty folder
-                let now = Local::now();
-                let date_prefix = now.format("%Y-%m-%d").to_string();
-
-                let new_name = if selection.starts_with(&date_prefix) {
-                    selection
-                } else {
-                    format!("{}-{}", date_prefix, selection)
-                };
+                let new_name = selection;
 
                 let new_path = tries_dir.join(&new_name);
                 fs::create_dir_all(&new_path)?;
