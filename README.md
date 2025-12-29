@@ -91,7 +91,12 @@ try-rs --setup bash
 🐚 Power-shell
 
 ```bash
-try-rs --setup powershell
+try-rs --setup power-shell
+```
+
+Nushell
+```bash
+try-rs --setup nu-shell
 ```
 
 2. Config File
